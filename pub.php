@@ -1,13 +1,57 @@
- <?php
- function pubMqtt($topic,$msg){
-       $APPID= "ArduinoLinebot/"; //enter your appid
-     $KEY = "3GI2EPhb2P50AD9"; //enter your key
-    $SECRET = "Wozae2cugWOC2aF9DaQMK6r1R"; //enter your secret
-    $Topic = "$topic"; 
-      put("https://api.netpie.io/microgear/".$APPID.$Topic."?retain&auth=".$KEY.":".$SECRET,$msg);
+<?php
+
+require('vendor/autoload.php');
+
+use \PhpMqtt\Client\MqttClient;
+use \PhpMqtt\Client\ConnectionSettings;
+
+function pubMqtt($topic,$msg){
  
-  }
- function getMqttfromlineMsg($Topic,$lineMsg){
+	$server   = 'broker.emqx.io';
+	$port     = 1883;
+	$clientId = rand(5, 15);
+	$clean_session = false;
+	$connectionSettings  = new ConnectionSettings();
+
+	$connectionSettings
+  	//->setUsername($username)
+  	//->setPassword(null)
+  	->setKeepAliveInterval(60)
+  	//->setLastWillTopic('emqx/test/last-will')
+  	->setLastWillMessage('client disconnect')
+  	->setLastWillQualityOfService(1);
+
+	$mqtt = new MqttClient($server, $port, $clientId);
+
+	$mqtt->connect($connectionSettings, $clean_session);
+	//printf("client connected\n");
+
+	$mqtt->subscribe('test555', function ($topic, $message) {
+    	printf("Received message on topic [%s]: %s\n", $topic, $message);
+	}, 0);
+
+	for ($i = 0; $i< 10; $i++) {
+  		$payload = array(
+    		'protocol' => 'tcp',
+    		'date' => date('Y-m-d H:i:s'),
+    		'url' => 'https://github.com/emqx/MQTT-Client-Examples'
+  		);
+  		$mqtt->publish(
+    		// topic
+    		'test555',
+    		// payload
+    		json_encode($payload),
+    		// qos
+    		0,
+    		// retain
+    		true
+  		);
+  		//printf("msg $i send\n");
+  		sleep(1);
+ 	}
+}
+
+function getMqttfromlineMsg($Topic,$lineMsg){
  
     $pos = strpos($lineMsg, ":");
     if($pos){
@@ -21,31 +65,4 @@
       pubMqtt($topic,$msg);
     }
   }
- 
-  function put($url,$tmsg)
-{
-      
-    $ch = curl_init($url);
- 
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-     
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-     
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-     
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-     
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $tmsg);
- 
-    //curl_setopt($ch, CURLOPT_USERPWD, "mJ7K4MfteC7p0dW:pp4gzMhCvJIqlxc66hKEvk46m");
-     
-    $response = curl_exec($ch);
-    
-      curl_close($ch);
-      echo $response . "\r\n";
-    return $response;
-}
-// $Topic = "NodeMCU1";
- //$lineMsg = "CHECK";
- //getMqttfromlineMsg($Topic,$lineMsg);
 ?>
